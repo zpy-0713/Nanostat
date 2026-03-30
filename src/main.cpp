@@ -92,7 +92,7 @@ int sweep_param_quietTime_NPV = 1000;
 int sweep_param_startV_DPV = -200; //   (mV)  voltage to start the scan
 int sweep_param_endV_DPV = 200;    //     (mV)  voltage to stop the scan
 int sweep_param_pulseAmp_DPV = 20;
-int sweep_param_pulseStep_DPV = 5; // (mV)      how much to increment the voltage by  
+int sweep_param_pulseStep_DPV = 5; // (mV)      how much to increment the voltage by
 int sweep_param_width_DPV = 50;
 int sweep_param_period_DPV = 200;
 int sweep_param_quietTime_DPV = 1000;
@@ -4099,8 +4099,27 @@ void setup()
   // Serial.println("The local IP address is:");
   // Serial.println(WiFi.localIP()); //print the local IP address
 
-  //#############################  WIFITOOL CUSTOMIZED #####################################
-  // Used this repo as a basis for ideas. https://github.com/oferzv/wifiTool
+#if CURRENT_WIFI_MODE == WIFI_MODE_AP
+  //#############################  ESP32 AP MODE #####################################
+  Serial.println(F("Starting ESP32 as Access Point..."));
+  WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+
+  #if defined(AP_PASSWORD) && strlen(AP_PASSWORD) > 0
+    WiFi.softAP(AP_SSID, AP_PASSWORD);
+  #else
+    WiFi.softAP(AP_SSID);
+  #endif
+  delay(500);
+  Serial.println(F("AP started."));
+  Serial.print(F("AP SSID: "));
+  Serial.println(AP_SSID);
+  Serial.print(F("AP IP address: "));
+  Serial.println(WiFi.softAPIP());
+
+#elif CURRENT_WIFI_MODE == WIFI_MODE_STA
+  //#############################  ESP32 STA MODE #####################################
+  // Try to connect to external WiFi router
 
   bool m_autoconnected_attempt_succeeded = false;
   m_autoconnected_attempt_succeeded = connectAttempt("", ""); // uses SSID/PWD stored in ESP32 secret memory.....
@@ -4115,28 +4134,15 @@ void setup()
   }
   if (!m_autoconnected_attempt_succeeded)
   {
-    // start AP server
-    // Serial.println("connect failed, starting AP server");
+    // start AP server as fallback
+    Serial.println("connect failed, starting AP server as fallback");
     setUpAPService();
     runWifiPortal();
-
-    // MDNS.begin("nanostat"); // see https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
   }
 
-  // connectAttempt(SSID,PASSWORD); // uses SSID/PWD stored in ESP32 secret memory.....
-
-  //#############################  WIFITOOL #####################################
-
-  // wifiTool.begin(false);
-  // if (!wifiTool.wifiAutoConnect())
-  // {
-  //   Serial.println("fail to connect to wifi!!!!");
-  //   wifiTool.runApPortal();
-  // }
-
-  // Serial.println("wifitools called ");
-  // delete &wifiTool;
-  // delay(2000);
+#else
+  #error "Invalid CURRENT_WIFI_MODE. Must be WIFI_MODE_AP or WIFI_MODE_STA."
+#endif
 
   //############################# DNS #####################################
   MDNS.begin("nanostat");
